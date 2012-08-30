@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:util="http://www.springframework.org/schema/util" xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:int-sftp="http://www.springframework.org/schema/integration/sftp"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xsi:schemaLocation="
+    http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+    http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+    http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+    http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd
+    http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+    http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration-2.0.xsd 
+    http://www.springframework.org/schema/integration/sftp http://www.springframework.org/schema/integration/sftp/spring-integration-sftp-2.0.xsd">
+
+	<context:component-scan base-package="com.skilledmonster.batch" />
+
+	<context:property-placeholder location="batch.properties" />
+	
+	<!-- configure datasource bean using BoneCP -->
+	<bean id="dataSource" class="com.jolbox.bonecp.BoneCPDataSource"
+		destroy-method="close">
+		<property name="driverClass" value="${datasource.driver.classname}" />
+		<property name="jdbcUrl" value="${datasource.url}" />
+		<property name="username" value="${datasource.username}" />
+		<property name="password" value="${datasource.password}" />
+		<property name="maxConnectionsPerPartition" value="10" />
+		<property name="minConnectionsPerPartition" value="2" />
+		<property name="partitionCount" value="2" />
+		<property name="acquireIncrement" value="5" />
+		<property name="releaseHelperThreads" value="3" />
+	</bean>
+
+	<tx:annotation-driven transaction-manager="transactionManager" />
+
+	<!-- bean for initializing datasource transaction manager -->
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<!-- bean job repository -->
+	<bean id="jobRepository"
+		class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean">
+		<property name="transactionManager" ref="transactionManager" />
+	</bean>
+
+	<!-- bean for lauching the job -->
+	<bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+
+	<!-- beans for defining the job and its steps. configure its readers and writers -->
+	<batch:job id="dataTransporter" restartable="${batch.job.restartable}">
+
+		<batch:step id="deleteFilesInDir" next="f_currency_lkup">
+			<batch:tasklet ref="fileDeletingTasklet" />
+		</batch:step>
+
+		<batch:step id="f_currency_lkup" next="f_language_lkup">
+			<batch:tasklet>
+				<batch:chunk reader="f_currency_lkup_Reader" writer="f_currency_lkup_Writer"
+					commit-interval="${batch.commit.interval}" />
+			</batch:tasklet>
+		</batch:step>
+
+		<batch:step id="f_language_lkup" next="sftp_transfer">
+			<batch:tasklet>
+				<batch:chunk reader="f_language_lkup_Reader" writer="f_language_lkup_Writer"
+					commit-interval="${batch.commit.interval}" />
+			</batch:tasklet>
+		</batch:step>
+
+		<batch:step id="sftp_transfer">
+			<batch:tasklet ref="sftpOutboundTransfer" />
+		</batch:step>
+
+	</batch:job>
+
+	<!--  bean for sftp transfer -->
+	<bean name="sftpOutboundTransfer"
+		class="com.skilledmonster.batch.tasklets.SftpOutboundTransferTasklet">
+		<property name="sourceDir" value="${batch.file.writer.root.directory}" />
+	</bean>
+
+	<bean id="rowMapper" class="org.springframework.jdbc.core.ColumnMapRowMapper" />
+
+	<!-- ======================================================= -->
+	<!-- reader - 1: currency_lkup -->
+	<!-- ======================================================= -->
+	<bean id="f_currency_lkup_Reader"
+		class="org.springframework.batch.item.database.JdbcCursorItemReader">
+		<property name="dataSource" ref="dataSource" />
+		<property name="fetchSize" value="${datasource.fetch.size}" />
+		<property name="sql">
+			<value>
+	            <![CDATA[
+	            	SELECT CUR_CD, CUR_ID, CUR_NAME, CREATE_USER_ID, CREATE_DATE FROM currency_lkup
+    			]]>
+			</value>
+		</property>
+		<property name="rowMapper">
+			<bean class="org.springframework.jdbc.core.ColumnMapRowMapper" />
+		</property>
+	</bean>
+	<!-- ======================================================= -->
+	<!-- reader - 2: language_lkup -->
+	<!-- ======================================================= -->
+	<bean id="f_language_lkup_Reader"
+		class="org.springframework.batch.item.database.JdbcCursorItemReader">
+		<property name="dataSource" ref="dataSource" />
+		<property name="fetchSize" value="${datasource.fetch.size}" />
+		<property name="sql">
+			<value>
+	            <![CDATA[
+	             SELECT LANG_CD, LANG_DESC, CREATE_USER_ID, CREATE_DATE FROM language_lkup 
+    			]]>
+			</value>
+		</property>
+		<property name="rowMapper">
+			<bean class="org.springframework.jdbc.core.ColumnMapRowMapper" />
+		</property>
+	</bean>
+
+	<!-- ======================================================= -->
+	<!-- writer - 1: currency_lkup -->
+	<!-- ======================================================= -->
+	<bean id="f_currency_lkup_Writer" class="org.springframework.batch.item.file.FlatFileItemWriter"
+		scope="step">
+		<property name="resource"
+			value="file://${batch.file.writer.root.directory}/${batch.f_currency_lkup_filename}" />
+		<property name="encoding" value="${batch.file.writer.encoding}" />
+		<property name="shouldDeleteIfExists" value="true" />
+		<property name="lineAggregator">
+			<bean
+				class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+				<property name="delimiter" value="${batch.file.writer.delimiter}" />
+			</bean>
+		</property>
+	</bean>
+
+	<!-- ======================================================= -->
+	<!-- writer - 2: language_lkup -->
+	<!-- ======================================================= -->
+	<bean id="f_language_lkup_Writer" class="org.springframework.batch.item.file.FlatFileItemWriter"
+		scope="step">
+		<property name="resource"
+			value="file://${batch.file.writer.root.directory}/${batch.f_language_lkup_filename}" />
+		<property name="encoding" value="${batch.file.writer.encoding}" />
+		<property name="shouldDeleteIfExists" value="true" />
+		<property name="lineAggregator">
+			<bean
+				class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+				<property name="delimiter" value="${batch.file.writer.delimiter}" />
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="step" class="org.springframework.batch.core.scope.StepScope" />
+
+	<!-- sftp session factory bean that contains details of the sftp location -->
+	<bean id="sftpSessionFactory"
+		class="org.springframework.integration.sftp.session.DefaultSftpSessionFactory">
+		<property name="host" value="${batch.sftp.hostname}" />
+		<property name="port" value="${batch.sftp.port}" />
+		<property name="user" value="${batch.sftp.username}" />
+		<property name="password" value="${batch.sftp.password}" />
+	</bean>
+
+	<int:channel id="ftpChannel" />
+
+	<int-sftp:outbound-channel-adapter
+		id="ftpOutbound" channel="ftpChannel" remote-directory="${batch.sftp.dest.directory}"
+		session-factory="sftpSessionFactory" />
+
+	<!-- file deleting tasklet bean -->
+	<bean id="fileDeletingTasklet" class="com.skilledmonster.batch.tasklets.FileDeletingTasklet">
+		<property name="directoryResource">
+			<bean id="directory" class="org.springframework.core.io.FileSystemResource">
+				<constructor-arg value="${batch.file.writer.root.directory}" />
+			</bean>
+		</property>
+	</bean>
+
+</beans>
