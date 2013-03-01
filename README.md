@@ -12,6 +12,9 @@ This is a sample project that demonstrates the following scenario to integrate S
 
 <h1>Author</h1>
 <hr/>
+<p>Jagadeesh Motamarri [ <a href="http://www.skilledmonster.com">Blog</a> | <a href="http://twitter.com/SkilledMonster">Twitter</a> ]</p>
 
-Jagadeesh Motamarri [Blog | Twitter]
+<h2>
+<a name="spring-batch" class="anchor" href="#spring-batch"><span class="mini-icon mini-icon-link"></span></a>Spring Batch</h2>
 
+<p>[<a href="http://static.springsource.org/spring-batch/">Site</a> | <a href="http://static.springsource.org/spring-batch/reference/index.html">Documentation</a>]</p>
