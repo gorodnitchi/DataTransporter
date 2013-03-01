@@ -1,4 +1,4 @@
-<h3>Data Transporter - A Sample Project to integrate Spring Batch and Spring Integration Frameworks</h3>
+<h1>Data Transporter - A Sample Project to integrate Spring Batch and Spring Integration Frameworks</h1>
 
 Author
 
