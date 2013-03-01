@@ -2,7 +2,7 @@
 
 This is a sample project that demonstrates the following scenario to integrate Spring Batch and Spring Integration frameworks
 
-<b>Scenario</b>
+<b>Scenario:</b>
 
 1. Read data from MySQL tables
     Table 1 # LANGUAGE_LKUP
