@@ -1,6 +1,6 @@
 <h2>Data Transporter - A Sample Project to integrate Spring Batch and Spring Integration Frameworks</h2>
 
-This is a sample project that demonstrates the following scenario to integrate Spring Batch and Spring Integration frameworks
+This is a sample project that uses the following scenario to integrate Spring Batch and Spring Integration frameworks
 
 <b>Scenario:</b>
 
