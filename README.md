@@ -11,7 +11,6 @@ This is a sample project that demonstrates the following scenario to integrate S
 3. Transfer the csv files created in the previous step to SFTP location using Spring Integration Module
 
 <h1>Author</h1>
-<hr/>
 <p>Jagadeesh Motamarri [ <a href="http://www.skilledmonster.com">Blog</a> | <a href="http://twitter.com/SkilledMonster">Twitter</a> ]</p>
 
 <h2>
