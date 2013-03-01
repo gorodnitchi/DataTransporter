@@ -10,9 +10,20 @@ This is a sample project that demonstrates the following scenario to integrate S
 2. Write it into csv files using Spring Batch Module
 3. Transfer the csv files created in the previous step to SFTP location using Spring Integration Module
 
+
+
 <h2>Author</h2>
 <p>Jagadeesh Motamarri [ <a href="http://www.skilledmonster.com">Blog</a> | <a href="http://twitter.com/SkilledMonster">Twitter</a> ]</p>
 
 <h2>Spring Batch</h2>
 
 <p>[ <a href="http://static.springsource.org/spring-batch/">Site</a> | <a href="http://static.springsource.org/spring-batch/reference/index.html">Documentation</a> ]</p>
+
+<h2>Spring Integration</h2>
+
+<p>[ <a href="http://www.springsource.org/spring-integration">Site</a> | <a href="http://static.springsource.org/spring-integration/reference/htmlsingle/">Documentation</a> ]</p>
+
+<h2>Buy me a coffee</h2>
+<p>You can do it by <a href="#">PayPal</a>. Thanks! (:</p>
+
+
